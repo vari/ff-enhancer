@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+    <head>
+        <title>FF Enhancer Settings</title>
+        <style type="text/css">
+            body {
+                font-family: Segoe UI Light;
+                font-size: 100%;
+                padding: 10px;
+                margin: 0 auto;
+                /*max-width: 420px!important;*/
+                max-height: 600px!important;
+                overflow: auto;
+            }
+            #title {
+                font-size: 1.5em;
+                font-weight: bold;
+                margin: auto;
+                padding-bottom: 0.5em;
+            }
+            h2 {
+                margin: auto;
+                font-size: 1.3em;
+                padding-top: 0.5em;
+                padding-bottom: 0.3em;
+                text-align: initial;
+                text-decoration-line: underline;
+            }
+            #criteria, #tags {
+                margin: auto;
+                text-align: center;
+                display: table-caption;
+            }
+            .table_holder {
+                display: inline-table;
+                text-align: initial;
+            }
+            #criteria_holder_header div, #tags_holder_header div {
+                text-transform: uppercase;
+                font-weight: bold;
+            }
+            .table_row {
+                display: table-row;
+            }
+            .table_row div {
+                display: table-cell;
+                margin: auto;
+                padding-right: 10px;
+                text-align: center;
+            }
+            .table_row div input[type=text] {
+                font-family: Segoe UI;
+            }
+            .btn, .show_btn, .hide_btn {
+                margin: auto;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                border-radius: 50%;
+                width: 1em;
+                height: 1em;
+                border: solid 2px white;
+                box-shadow:0px 0px 5px black;              
+                background-color: LimeGreen;
+                text-align: center;
+                color: white;
+                font-weight: bolder;
+                font-size: 1.2em;
+                line-height: 0.8em;
+                cursor: pointer;
+            }
+            .table_row .btn {
+                margin: auto;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                width: 1.1em;
+                height: 1.1em;
+                padding: 0;
+                text-transform: lowercase;
+                background-color: OrangeRed;
+                font-size: 0.8em;
+                font-style: italic;
+                display: inline-block;
+            }
+            .help_text {
+                margin: auto;
+                word-wrap: break-word;
+                text-align: left;
+                display: none;
+            }
+            .param {
+                display: inline-block;
+                background-color: LightGrey;
+                font-weight: bold;
+            }
+            .param_title {
+                display: inline-block;
+                background-color: LightGrey;
+                text-transform: uppercase;
+            }
+            .show_btn, .hide_btn {
+                border-radius: 10%;
+                line-height: 1em;
+                width: fit-content;
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            .hide_btn {
+                background-color: OrangeRed;
+            }
+        </style>
+        <script src="popup.js"></script>
+    </head>
+  <body>
+    <div id="title">FF Enhancer Settings</div>
+    <div id="config">
+      <h2>Config:</h2>
+      <div class="config_entry">Enabled: <input id="config_enable_box" type="checkbox"  value="true"></div>
+    </div>
+    <div id="criteria">
+      <h2>Story Criteria:</h2>
+      <div id="criteria_holder" class="table_holder"></div>
+      <div id="criteria_add_btn" class="btn">+</div>
+      <div id="criteria_show_help_btn" class="show_btn">Show help</div>
+      <div id="criteria_help" class="help_text">
+        Click the + button to add more filters.
+        <br>
+        Enter the criteria to use to filter stories. For example, to show only stories with &gt; 15 000 words, you should enter <div class="param">words</div> under <div class="param_title">Property</div>, select <div class="param">&gt;</div> under <div class="param_title">Comparator</div>, and enter <div class="param">15000</div> under <div class="param_title">Value</div>.
+        <br>List of valid keywords for Property:
+        <ul>
+            <li><div class="param">words</div></li>
+            <li><div class="param">chapters</div></li>
+            <li><div class="param">reviews</div></li>
+            <li><div class="param">follows</div></li>
+            <li><div class="param">favourites</div></li>
+            <li><div class="param">publish_date</div></li>
+            <li><div class="param">upload_date</div></li>
+            <li><div class="param">&lt;prop1&gt;/&lt;prop2&gt;</div> where &lt;prop1&gt; and &lt;prop2&gt; are any one of values from the above list except for <div class="param">upload_date</div> and <div class="param">publish_date</div>. Use this to compare a ratio; for instance, if you wanted to show only stories that have more 500 words per chapter (on average), you would enter <div class="param">words/chapter</div>, select <div class="param">&lt;</div> under <div class="param_title">Comparator</div>,and enter <div class="param">500</div> under <div class="param_title">Value</div> </li>
+        </ul>
+        For <div class="param">publish_date</div> and <div class="param">upload_date</div>, enter dates in a YYYY/MM/DD format in the <div class="param_title">Value</div> column. E.g. for the date Jan 13, 2017, enter <div class="param">2017/01/13</div> under <div class="param_title">Value</div>.
+      </div>
+    </div>
+    <div id="tags">
+      <h2>Story Tags:</h2>
+      <div id="tags_holder" class="table_holder"></div>
+      <div id="tags_add_btn" class="btn">+</div>
+      <div id="tags_show_help_btn" class="show_btn">Show help</div>
+      <div id="tags_help" class="help_text">
+        Click the + button to add more filters.
+        <br>
+        Enter the tags to use to filter stories. For example, to remove stories which contain "Harry" in the description, enter <div class="param">Harry</div> under <div class="param_title">Tag</div>. Check the <div class="param_title">Match Case?</div> checkbox if you want to match case when determining if a tag matches a story (i.e. match stories that have "Harry" in the description, but not "harry"). Check the <div class="param_title">Include?</div> checkbox if you want to include results that match the tag or leave it unchecked to remove stories matching the tag.
+        HELP TEXT TO BE ADDED FOR SHIP NAMES!
+      </div>
+    </div>
+  </body>
+</html>
