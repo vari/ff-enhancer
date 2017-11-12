@@ -21,7 +21,7 @@
 function Story(div) {
 	// Class to represent story
 	// div is html element for story -> used to construct Story object
-	if (!div || div.children.length > 2) { return false; } // invalid element
+	if (!div || div.children.length < 3) { return false; } // invalid element
 	this.div = div;
 	
 	// title
@@ -56,7 +56,7 @@ function Story(div) {
 	
 	// publish dates and upload dates have data-xutime set -> this is unix epoch. Convert to date obj by * 1000 and creating date
 	var date_elements = description_element.children[0].getElementsByTagName('span');
-	var dates = null;
+	var dates = [];
 	var date;
 	for (var i = date_elements.length - 1; i >= 0; i--) {
 		date = new Date(date_elements[i].dataset.xutime * 1000); // convert unix epoch into epoch, then convert it into date
@@ -66,34 +66,36 @@ function Story(div) {
 	this.update_date = dates.length > 1 ? dates[1] : dates[0];
 	
 	// reviews
-	var regex_result = Story.reviews.exec(this.info_text);
-	if (regex_result) { this.reviews = parseInt(regex_result[1].trim().replace(',', ''), 10); }
+	var regex_result = Story.regex.reviews.exec(this.info_text);
+	if (regex_result) { this.reviews = parseInt(regex_result[1].trim().replace(',', ''), 10); } else { this.reviews = 0; }
 	// favs
-	regex_result = Story.favourites.exec(this.info_text);
-	if (regex_result) { this.favourites = parseInt(regex_result[1].trim().replace(',', ''), 10); }
+	regex_result = Story.regex.favourites.exec(this.info_text);
+	if (regex_result) { this.favourites = parseInt(regex_result[1].trim().replace(',', ''), 10); } else { this.favourites = 0; }
 	// follows
-	regex_result = Story.follows.exec(this.info_text);
-	if (regex_result) { this.follows = parseInt(regex_result[1].trim().replace(',', ''), 10); }
+	regex_result = Story.regex.follows.exec(this.info_text);
+	if (regex_result) { this.follows = parseInt(regex_result[1].trim().replace(',', ''), 10); } else { this.follows = 0; }
 	// complete
-	regex_result = Story.complete.exec(this.info_text);
+	regex_result = Story.regex.complete.exec(this.info_text);
 	this.complete = (regex_result != null);
 	// genres
-	regex_result = Story.genres.exec(this.info_text);
-	if (regex_result) { this.genres = regex_result[1].trim(); }
+	regex_result = Story.regex.genres.exec(this.info_text);
+	if (regex_result) { this.genres = regex_result[1].trim(); } else { this.genres = ''; }
 
 	// characters
-	regex_result = Story.all_characters.exec(this.info_text);
-	if (regex_result) { this.characters_text = regex_result[1].trim(); }
+	regex_result = Story.regex.all_characters.exec(this.info_text);
 	// charcaters text is kept so that it can be used to process pairings
+	this.all_characters = [];
+	this.pairings = [];
+	if (regex_result) { this.characters_text = regex_result[1].trim(); } else { return; }
+
 	this.all_characters = this.characters_text.replace('[','').replace(']','').split(',');
 	for (var i = this.all_characters.length - 1; i >= 0; i--) { this.all_characters[i] = this.all_characters[i].trim();	}
 	// process pairings
-	this.pairings = [];
-	regex_result = Story.pairings.exec(this.characters_text);
+	regex_result = Story.regex.pairings.exec(this.characters_text);
 	if (regex_result) {
 		var pairs = [];
 		for (var i = regex_result.length - 1; i >= 1; i--) {
-			pairs = regex_result.split(',');
+			pairs = regex_result[1].split(',');
 			for (var j = 0; j < pairs.length; j++) { pairs[j] = pairs[j].trim(); }
 			this.pairings.push(pairs);
 		}
@@ -111,6 +113,8 @@ Story.regex = {
 	pairings: /\[(.+?)\]/
 };
 
+Story.prototype.show = function() {	this.div.style.display = 'block'; };
+Story.prototype.hide = function() {	this.div.style.display = 'none'; };
 
 function Tag(text, case_sensitive, include_tag) {
 	// Class to represent a Tag to include / exclude from list of stories
@@ -123,7 +127,7 @@ function Tag(text, case_sensitive, include_tag) {
 	this.pairings_regex_test = /(\w{1,})\/(\w{1,})/;
 	this.pairings_exp = [];
 	this.pairing_name1 = ''; this.pairing_name2 = '';
-	this.isPairing = this.pairings_regex.test(this.text);
+	this.isPairing = this.pairings_regex_test.exec(this.text);
 	if (this.isPairing) {
 		this._expand_pairings();
 	}
@@ -151,35 +155,44 @@ Tag.prototype._expand_pairings = function() {
 			}
 			
 		}
-		this.pairing_name1 = name1;
-		this.pairing_name2 = name2;
+		this.pairing_name1 = this.case_sensitive ? new RegExp(name1) : new RegExp(name1, "i");
+		this.pairing_name2 = this.case_sensitive ? new RegExp(name2) : new RegExp(name2, "i");
 	} 
 };
 
-Tag.prototype.isMatch = function(story_text) {
+Tag.prototype.match = function(story) {
 	// returns true if this Tag matches the story_text
 	// E.g. if story_text = "tags to match" and this.text = "tag", result is true
 	// If this.include = false, then the result is false
+	var story_text = story.description, story_pairings = story.pairings;
 	var result = false;
 	if (this.isPairing) {
 		for (var i = this.pairings_exp.length - 1; i >= 0; i--) {
 			result = story_text.search(this.pairings_exp[i]) !== -1;
 			if (result) { break; }
 		}
+		if (!result) {
+			for (var i = story_pairings.length - 1; i >= 0; i--) {
+				for (var j = story_pairings[j].length - 1; j >= 0; j--) {
+					result = story_pairings[i][j].search(this.pairing_name1) !== -1 || story_pairings[i][j].search(this.pairing_name2) !== -1;
+					if (result) { break; }
+				}
+			}
+		}
 	} else {
 		result = story_text.search(this.text_regex) !== -1;
 	}
-	return this.include ? result : !result;
+	return result ? this.include : !this.include;
 };
 
 var CRIT_TYPE = {
-	words: "WORDS", //int
-	chapters: "CHAPTERS", //int
-	reviews: "REVIEWS", //int
-	follows: "FOLLOWS", //int
-	favourites: "FAVOURITES", //int
-	publish_date: "PUBLISH_DATE", //date
-	update_date: "UPDATE_DATE" //date
+	words: "words", //int
+	chapters: "chapters", //int
+	reviews: "reviews", //int
+	follows: "follows", //int
+	favourites: "favourites", //int
+	publish_date: "publish_date", //date
+	update_date: "update_date" //date
 };
 
 function RATIO_TYPE(text) {
@@ -191,8 +204,6 @@ function RATIO_TYPE(text) {
 	if (results !== null) {
 		this.num = results[1];
 		this.denom = results[2];
-	} else {
-		 return false;
 	}
 }
 
@@ -201,13 +212,96 @@ function Criteria(type, operator, value) {
 	// operator should be the operator enclosed in a string. i.e. '>', '<', '='
 	// value must be valid for the type chosen
 	this.type = type;
+	var test = new RATIO_TYPE(this.type);
+	if (test.num) {
+		this.type = new RATIO_TYPE(this.type);
+	}
 	this.operator = operator;
 	this.value = value;
+	if (this.type ==- CRIT_TYPE.publish_date || this.type === CRIT_TYPE.update_date) {
+		this.value = getDateFromCriteriaValue(value);
+	}
 }
 
-Criteria.prototype.match = function(StoryAttributes) {
-	// body...
+Criteria.prototype.match = function(story) {
+	var getValue = function(story, type) {
+		switch (type) {
+			case CRIT_TYPE.words:
+				return story.words;
+			case CRIT_TYPE.chapters:
+				return story.chapters;
+			case CRIT_TYPE.reviews:
+				return story.reviews; 
+			case CRIT_TYPE.follows: 
+				return story.follows;
+			case CRIT_TYPE.favourites:
+				return story.favourites;
+			case CRIT_TYPE.publish_date: 
+				return story.publish_date;
+			case CRIT_TYPE.update_date:
+				return story.update_date;
+			default:
+				return null;
+		}
+	};
+
+	var compare = function(story_val, operator, my_val) {
+		if (!story_val) { return false; }
+		switch (operator) {
+			case '<':
+				return story_val < my_val;
+			case '=':
+				return story_val == my_val;
+			case '>':
+				return story_val > my_val;
+			default:
+				return false;
+		}
+	};
+
+	switch (this.type) {
+		case CRIT_TYPE.words:
+		case CRIT_TYPE.chapters:
+		case CRIT_TYPE.reviews: 
+		case CRIT_TYPE.follows: 
+		case CRIT_TYPE.favourites:
+		case CRIT_TYPE.publish_date: 
+		case CRIT_TYPE.update_date:
+			return compare(getValue(story, this.type), this.operator, this.value);
+			break;
+		default:
+			return compare(getValue(story, this.type.num) / getValue(story, this.type.denom), this.operator, this.value);
+	}
+	return false;
 };
+
+
+function getDateFromCriteriaValue(value) {
+	if (value.length === 0) { return false; }
+	// determine if value is a date string
+	// expect strings in YYYY/MM/DD format
+	var date_regex = /([0-9]{4})\/([0-9]{2})\/([0-9]{2})/;
+	var date = date_regex.exec(value);
+	var daysInMonth = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	if (date !== null) {
+		var year = parseInt(date[1], 10);
+		// leap year
+		if (!isNaN(year) && (year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0))) { daysInMonth[2] = 29; }
+		var month = parseInt(date[2], 10);
+		var day = parseInt(date[3], 10);
+		var today = new Date();
+		var is_valid_date = !isNaN(year) && !isNaN(month) && !isNaN(day) &&
+				year >= 1998 && year <= today.getFullYear() &&
+				month >= 1 && month <= 12 &&
+				day >= 1 && day <= daysInMonth[month];
+		if (is_valid_date) {
+			return new Date(year, month - 1, day, 0, 0, 0, 0); // month -1 because accepted range is 0 - 11
+		} else {
+			return false;
+		}
+	}
+	return false;
+}
 
 debugger;
 // document.addEventListener('DOMContentLoaded', () => {
@@ -225,3 +319,66 @@ for (var i = 0; i < story_holder.childNodes.length; i++) {
 		stories.push(story);
 	}
 }
+
+// var tags = [new Tag("slash", false, false), new Tag("Harry", true, true), new Tag("Harry/Hermione", false, false), new Tag("Harry/Ginny", true, false)];
+// var criterias = [new Criteria("words", ">", 13510), new Criteria("words", "<", 99510), new Criteria("chapters", ">", 10), new Criteria("words/chapters", ">", 1000)];
+var tags = [];
+var criterias = [];
+var matched_stories = [];
+
+function filter_stories() {
+	var matched = true;
+
+	for (var i = 0; i < stories.length; i++) {
+		matched = true;
+		for (var j = 0; j < criterias.length; j++) {
+			if (!criterias[j].match(stories[i])) { matched = false; break; }
+		}
+		if (!matched) { 
+			stories[i].hide();
+			continue;
+		}
+		for (var j = 0; j < tags.length; j++) {
+			if (!tags[j].match(stories[i])) { matched = false; break; }
+		}
+		if (matched) {
+			stories[i].show();
+			matched_stories.push(stories[i]); 
+		} else {
+			stories[i].hide();
+		}
+	}
+}
+
+function resetStories() {
+	if (matched_stories.length != stories.length) {
+		for (var i = stories.length - 1; i >= 0; i--) {
+			stories[i].show();
+		}
+	}
+}
+
+
+chrome.runtime.sendMessage({message: "get_filters"});
+
+chrome.runtime.onMessage.addListener(
+	function(request, sender, sendResponse) {
+		if (request.message == "filters") {
+			if (request.tags) {
+				tags = [];
+				for (var i = 0; i < request.tags.length; i++) {
+					tags.push(new Tag(request.tags[i].text, request.tags[i].case_sensitive, request.tags[i].include));
+				}
+			}
+			if (request.criterias) {
+				criterias = [];
+				for (var i = 0; i < request.criterias.length; i++) {
+					criterias.push(new Criteria(request.criterias[i].type, request.criterias[i].operator, request.criterias[i].value));
+				}
+			}
+			filter_stories();
+		} else if (request.message == "disabled") {
+			resetStories();
+		}
+	}
+);

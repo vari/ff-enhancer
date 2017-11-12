@@ -73,17 +73,21 @@ CriteriaData.prototype.validateType = function(type, test_ratio) {
 		case CRIT_TYPE.reviews: 
 		case CRIT_TYPE.follows: 
 		case CRIT_TYPE.favourites: 
-		case CRIT_TYPE.publish_date: 
+			return true;
+			break;
+		case CRIT_TYPE.publish_date:
+			if (test_ratio) { return false; }
 		case CRIT_TYPE.update_date:
+			if (test_ratio) { return false; }
 			return true;
 			break;
 		default:
-			if (test_ratio === false) {
+			if (test_ratio) {
 				// prevent recursive ratio check calls
 				return false;
 			}
 			var ratio_test = new RATIO_TYPE(this.type);
-			if (ratio_test instanceof RATIO_TYPE && this.validateType(ratio_test.num, false) && this.validateType(ratio_test.denom, false)) {
+			if (ratio_test.num && this.validateType(ratio_test.num, true) && this.validateType(ratio_test.denom, true)) {
 				return true;
 			}
 			return false;
@@ -94,7 +98,7 @@ CriteriaData.prototype.validateType = function(type, test_ratio) {
 CriteriaData.prototype.validateOperator = function() {
 	var result = false;
 	for (var i = operators.length - 1; i >= 0; i--) {
-		result = result || this.op === operators[i];
+		result = result || this.operator === operators[i];
 	}
 	return result;
 };
@@ -169,7 +173,7 @@ function Config(enabled) {
 // These arrays store tagdata from the UI. They are all validated before being sent to content script or saved in storage.
 var tags = [];
 var criteria = [];
-var config = new Config(true);
+var config = new Config(false);
 
 
 function createEmptyCriteriaData() {
@@ -183,20 +187,42 @@ function createEmptyTagData() {
 // Functions + variables relating to the storage and retrieval of data from chrome storage:
 var CRITERIA_KEY = "__FF_ENHANCER_CRITERIA_KEY__", TAGS_KEY = "__FF_ENHANCER_TAGS_KEY__", CONFIG_KEY = "__FF_ENHANCER_CONFIG_KEY__";
 
+function sendFilters(tab_id) {
+	if (config.enabled) {
+		// need to send only valid tags because content script expects valid input
+		chrome.tabs.sendMessage(tab_id, {message: "filters",
+										 tags: tags.filter(function(t) {	return t.validate(); }), 
+										 criterias: criteria.filter(function(c) { return c.validate(); })});
+	} else {
+		chrome.tabs.sendMessage(tab_id, {message: "disabled"});
+	}
+}
+
+
+chrome.runtime.onMessage.addListener( function(request, sender, sendResponse) {
+	if (request.message == "get_filters" && sender.tab) {
+		sendFilters(sender.tab.id);
+	}
+});
+
 
 function save_data() {
 	var data_obj = {};
-	data_obj[CRITERIA_KEY] = criteria;
-	data_obj[TAGS_KEY] = tags;
+	data_obj[CRITERIA_KEY] = criteria.filter(function(c) { return c.validate(); });
+	data_obj[TAGS_KEY] = tags.filter(function(t) { return t.validate(); });
 	data_obj[CONFIG_KEY] = config;
-	chrome.storage.sync.set();
+	chrome.storage.sync.set(data_obj);
 }
 
 chrome.storage.sync.get(CRITERIA_KEY, function(result) {
 	if(Object.hasOwnProperty.call(result, CRITERIA_KEY)) {
 		console.log('Criteria found from storage:');
 		console.log(result[CRITERIA_KEY]);
-		//_crits.loadCrits(result[CRITS]);
+		var c = null;
+		for (var i = 0; i < result[CRITERIA_KEY].length; i++) {
+			c = result[CRITERIA_KEY][i];
+			criteria.push(new CriteriaData(c.type, c.operator, c.value));
+		}
 	}
 	else {
 		console.log('No criteria found in storage');
@@ -207,6 +233,11 @@ chrome.storage.sync.get(TAGS_KEY, function(result) {
 	if(Object.hasOwnProperty.call(result, TAGS_KEY)) {
 		console.log('Tags found in storage:');
 		console.log(result[TAGS_KEY]);
+		var t = null;
+		for (var i = 0; i < result[TAGS_KEY].length; i++) {
+			t = result[TAGS_KEY][i];
+			tags.push(new TagData(t.text, t.case_sensitive, t.include));
+		}
 	}
 	else {
 		console.log('No tags found in storage');
@@ -217,6 +248,17 @@ chrome.storage.sync.get(CONFIG_KEY, function(result) {
 	if(Object.hasOwnProperty.call(result, CONFIG_KEY)) {
 		console.log('Config from storage:');
 		console.log(result[CONFIG_KEY]);
+		config = new Config(result[CONFIG_KEY].enabled);
+	}
+});
+
+var port = null;
+chrome.runtime.onConnect.addListener(function(p) {
+	if (p.name == "__FF_ENHANCER_POPUP_") {
+		port = p;
+		p.onDisconnect.addListener(function(p) { 
+			save_data();
+		});
 	}
 });
 
