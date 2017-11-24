@@ -23,7 +23,7 @@ function FilterTableHTMLManager(table_id, header_values, header_id, row_prefix, 
 	}
 	this.show_help_btn = document.getElementById(show_help_id);
 	if (this.show_help_btn === null) {
-		console.error("show_help_btn with id: " + show_help_btn + " not found!");
+		console.error("show_help_btn with id: " + show_help_id + " not found!");
 	} else {
 		this.show_help_btn.addEventListener('click', function () { 
 			var text = document.getElementById(help_text_id);
@@ -344,6 +344,35 @@ document.addEventListener('DOMContentLoaded', () => {
 		bg.config.enabled = this.checked;
 	});
 	enabled_chkbox.checked = bg.config.enabled;
+
+
+// import export filters -> to be moved to a separate function later
+	export_btn_id = "export_filters_btn"
+	export_filters_btn = document.getElementById(export_btn_id);
+	if (export_filters_btn === null) {
+		console.error("export_filters_btn with id: " + export_btn_id + " not found!");
+	} else {
+		export_filters_btn.addEventListener('click', function () { 
+			var text = document.getElementById("filter_export_help");
+			var export_text_div = document.getElementById("filter_export_text");
+			if (text) {
+				if (text.style.display === 'block') {
+					this.className = "show_btn";
+					text.style.display = 'none';
+					this.textContent = "Export filters";
+					export_text_div.style.display = 'none';
+				} else {
+					this.className = "hide_btn";
+					text.style.display = 'block';
+					export_text_div.style.display = 'block';
+					this.textContent = 'Hide export text';
+					var filters_text = JSON.stringify({"tags":bg.tags, "criteria":bg.criteria});
+					export_text_div.textContent = filters_text;
+				}
+			}
+		});
+	}
+
 });
 
 var port = chrome.runtime.connect({name: "__FF_ENHANCER_POPUP_"});
