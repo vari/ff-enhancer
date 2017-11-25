@@ -3,7 +3,7 @@
 var bg = chrome.extension.getBackgroundPage();
 
 // Base class for the HTML manager for filter tables
-function FilterTableHTMLManager(table_id, header_values, header_id, row_prefix, table_data_array, add_btn_id, show_help_id, help_text_id) {
+function FilterTableHTMLManager(table_id, header_values, header_id, row_prefix, add_btn_id, show_help_id, help_text_id) {
 	this.table_holder = null;
 	this.header = null;
 	this.table_holder_id = table_id;
@@ -11,7 +11,6 @@ function FilterTableHTMLManager(table_id, header_values, header_id, row_prefix, 
 	this.header_values = header_values;
 	this.row_id_prefix = row_prefix;
 	this.row_class = "table_row";
-	this.table_data_array = table_data_array;
 	this.table_created = false;
 
 	this.add_btn = document.getElementById(add_btn_id);
@@ -67,19 +66,26 @@ FilterTableHTMLManager.prototype.generateTable = function() {
 	this.updateTable();
 	this.table_created = true;
 };
-
+FilterTableHTMLManager.prototype.getData = function() { console.error("SUBCLASS MUST OVERRIDE getData METHOD!"); };
 FilterTableHTMLManager.prototype.updateTable = function() {
 	var table_row;
 	var row_id;
 	// id is row_id_prefix + i
-	for (var i = 0; i < this.table_data_array.length; i++) {
+	for (var i = 0; i < this.getData().length; i++) {
 		row_id = this.row_id_prefix + i;
 		table_row = document.getElementById(row_id);
 		if (table_row === null) {
-			table_row = this.createDivForRow(this.table_data_array[i], row_id);
+			table_row = this.createDivForRow(this.getData()[i], row_id);
 			this.table_holder.children[i].insertAdjacentElement('afterend', table_row);
 		} else {
-			this.updateDivForRow(this.table_data_array[i], table_row);
+			this.updateDivForRow(this.getData()[i], table_row);
+		}
+	}
+	var diff = this.table_holder.children.length - 1 - this.getData().length;
+	if (diff) {
+		// the table has extra entries which need to be removed
+		for (var i = this.table_holder.children.length - 1; i > this.getData().length; i--) {
+			this.table_holder.children[i].parentNode.removeChild(this.table_holder.children[i]);
 		}
 	}
 };
@@ -87,33 +93,40 @@ FilterTableHTMLManager.prototype.updateTable = function() {
 FilterTableHTMLManager.prototype.createDivForRow = function(data_obj, row_id) {	console.error("SUBCLASS MUST OVERRIDE createDivForRow METHOD!"); };
 FilterTableHTMLManager.prototype.updateDivForRow = function(data_obj, row_div) { console.error("SUBCLASS MUST OVERRIDE updateDivForRow METHOD!"); };
 
-FilterTableHTMLManager.prototype.addRemoveRowBtn = function (element, row_id) {
+FilterTableHTMLManager.prototype.addRemoveRowBtn = function (element) {
 	// element is the element to which removerowbtn should be appended to
-	// row_id is row_id to pass to eventlistener
 	var remove_row_btn = this.remove_row_btn_template.cloneNode(true);
 	var mngr = this; //can't use this since that refers to the HTML element
-	remove_row_btn.addEventListener('click', function () { mngr.removeRowBtnClick(row_id); }, {once: true});
+	remove_row_btn.addEventListener('click', function () { mngr.removeRowBtnClick(element, mngr); }, {once: true});
 	element.appendChild(remove_row_btn);
 };
 
-FilterTableHTMLManager.prototype.removeRowBtnClick = function(row_id) {
-	var row = document.getElementById(row_id);
+FilterTableHTMLManager.prototype.removeRowBtnClick = function(row, mngr) {
+	var row_id = row.id;
 	if (row === null) {
 		console.error("Could not get row element to remove!");
+		return;
 	}
-	var index = parseInt(row_id.slice(this.row_id_prefix.length) , 10);
-	this.table_data_array.splice(index, 1); //remove element from the array
+	var index = parseInt(row_id.slice(mngr.row_id_prefix.length) , 10);
+	mngr.getData().splice(index, 1); //remove element from the array
 	row.parentNode.removeChild(row);
+	// update id nums for remaining rows
+	curr_id = /(\d+)/.exec(row_id);
+	if (!curr_id) { return; }
+	curr_id = parseInt(curr_id[1].trim(), 10);
+	for (var i = curr_id; i + 1 < mngr.table_holder.children.length; i++) {
+		mngr.table_holder.children[i + 1].id = mngr.row_id_prefix + i; // i + 1 needed since header is the first row
+	}
 };
 
 FilterTableHTMLManager.prototype.createNewDataElement = function() { console.error("SUBCLASS MUST OVERRIDE createNewDataElement METHOD!"); };
 
 FilterTableHTMLManager.prototype.addRowBtnClick = function() {
 	var data = this.createNewDataElement();
-	var index = this.table_data_array.length;
+	var index = this.getData().length;
 	var id = this.row_id_prefix + index;
 	var row = this.createDivForRow(data, id);
-	this.table_data_array.push(data);	//This should update the original data array as well since we are not creating a copy.
+	this.getData().push(data);	//This should update the original data array as well since we are not creating a copy.
 	this.table_holder.children[index].insertAdjacentElement('afterend', row);
 };
 
@@ -125,7 +138,6 @@ function CriteriaHTMLManager() {
 		["Property", "Comparator", "Value", ""], //header values
 		"criteria_holder_header", //header id
 		"criteria_entry_", //row prefix
-		bg.criteria, //table data array
 		"criteria_add_btn", //add btn id
 		"criteria_show_help_btn", //show help btn id
 		"criteria_help" //help text id
@@ -164,6 +176,7 @@ function CriteriaHTMLManager() {
 CriteriaHTMLManager.prototype = Object.create(FilterTableHTMLManager.prototype);
 CriteriaHTMLManager.prototype.constructor = CriteriaHTMLManager;
 
+CriteriaHTMLManager.prototype.getData = function() { return bg.criteria; };
 CriteriaHTMLManager.prototype.createDivForRow = function(crit, row_id) {
 	var row = document.createElement("div");
 	row.id = row_id;
@@ -184,7 +197,7 @@ CriteriaHTMLManager.prototype.createDivForRow = function(crit, row_id) {
 	value.children[0].value = crit.value;
 	row.appendChild(value);
 
-	this.addRemoveRowBtn(row, row_id);
+	this.addRemoveRowBtn(row);
 
 	// setup event listeners
 	// update vars to point to input element rather than outer div
@@ -237,7 +250,6 @@ function TagsHTMLManager() {
 		["Tag", "Match case?", "Include?", ""], //header values
 		"tags_holder_header", //header id
 		"tags_entry_", //row prefix
-		bg.tags, //table data array
 		"tags_add_btn", //add btn id
 		"tags_show_help_btn", //show help btn id
 		"tags_help" //help text id
@@ -270,6 +282,7 @@ function TagsHTMLManager() {
 TagsHTMLManager.prototype = Object.create(FilterTableHTMLManager.prototype);
 TagsHTMLManager.prototype.constructor = TagsHTMLManager;
 
+TagsHTMLManager.prototype.getData = function() { return bg.tags; };
 TagsHTMLManager.prototype.createDivForRow = function(tag_obj, row_id) {
 	var row = document.createElement("div");
 	row.id = row_id;
@@ -290,7 +303,7 @@ TagsHTMLManager.prototype.createDivForRow = function(tag_obj, row_id) {
 	include.children[0].checked = tag_obj.include;
 	row.appendChild(include);
 
-	this.addRemoveRowBtn(row, row_id);
+	this.addRemoveRowBtn(row);
 
 	// setup event listeners
 	// update vars to point to input element rather than outer div
@@ -344,9 +357,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		bg.config.enabled = this.checked;
 	});
 	enabled_chkbox.checked = bg.config.enabled;
+	setupImportExport()
 
+});
 
-// import export filters -> to be moved to a separate function later
+function setupImportExport() {
+	// export filters
 	export_btn_id = "export_filters_btn"
 	export_filters_btn = document.getElementById(export_btn_id);
 	if (export_filters_btn === null) {
@@ -365,14 +381,54 @@ document.addEventListener('DOMContentLoaded', () => {
 					this.className = "hide_btn";
 					text.style.display = 'block';
 					export_text_div.style.display = 'block';
-					this.textContent = 'Hide export text';
+					this.textContent = 'Hide export filters text';
 					var filters_text = JSON.stringify({"tags":bg.tags, "criteria":bg.criteria});
 					export_text_div.textContent = filters_text;
 				}
 			}
 		});
 	}
+	// import filters
+	import_btn_id = "import_filters_btn"
+	import_filters_btn = document.getElementById(import_btn_id);
+	if (import_filters_btn === null) {
+		console.error("import_filters_btn with id: " + import_btn_id + " not found!");
+	} else {
+		import_filters_btn.addEventListener('click', function () { 
+			var text = document.getElementById("filter_import_text");
+			if (text) {
+				if (text.textLength > 0) {
+					var _crits = [];
+					var _tags = [];
+					var json_data = JSON.parse(text.value);
+					if (json_data.tags && json_data.tags.length) {
+						for (var i = 0; i < json_data.tags.length; i++) {
+							if (json_data.tags[i].hasOwnProperty('case_sensitive') && json_data.tags[i].hasOwnProperty('text') && json_data.tags[i].hasOwnProperty('include')) {
+								_tags.push(json_data.tags[i]);
+							}
+						}	
+					}
+					if (json_data.criteria && json_data.criteria.length) {
+						for (var i = 0; i < json_data.criteria.length; i++) {
+							if (json_data.criteria[i].hasOwnProperty('type') && json_data.criteria[i].hasOwnProperty('operator') && json_data.criteria[i].hasOwnProperty('value')) {
+								_crits.push(json_data.criteria[i]);
+							}
+						}	
+					}
+					bg.criteria = _crits;
+					bg.tags = _tags;
+					criteria_manager.updateTable();
+					tags_manager.updateTable();
+				}
+			}
+		});
+	}
 
-});
+}
 
 var port = chrome.runtime.connect({name: "__FF_ENHANCER_POPUP_"});
+
+/*
+Sample import text for testing filter import
+{"tags":[{"case_sensitive":false,"text":"draco","include":false},{"case_sensitive":true,"text":"HHr","include":false},{"case_sensitive":false,"text":"harry","include":true}],"criteria":[{"type":"words","operator":">","value":"12500"},{"type":"chapters","operator":"<","value":"50"}]}
+*/
