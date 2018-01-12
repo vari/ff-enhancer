@@ -145,7 +145,7 @@ Tag.prototype._expand_pairings = function() {
 		names.push(name1 + "x" + name2); //barxfoo
 		names.push(name1 + "X" + name2); //barXfoo
 		names.push(name1 + "-" + name2); //barfoo
-		names.push(name1 + " " + name2); //bar foo
+		// names.push(name1 + " " + name2); //bar foo
 		names.push(name1 + "!" + name2); //bar!foo
 		for (var i = 0; i < names.length; i++) {
 			if (this.case_sensitive) {
