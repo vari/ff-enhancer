@@ -1,4 +1,4 @@
-# ff enhancer
+# FF Enhancer
 FF Enhancer is a Google Chrome extension for enhancing the filtering options for www.fanfiction.net. 
 It allows you to specifiy more specific filters and filter by tags to include/exclude.  
   It is designed to be customizable based on the user's needs, but as this is a work in progress, features may be added or removed.  
