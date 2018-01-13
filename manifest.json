@@ -7,6 +7,11 @@
         "default_popup": "popup.html",
         "default_title": "FF Enhancer"
     },
+    "icons": {
+      "128": "ffe-icon.png",
+      "48": "ffe-icon.png"
+    },
+    "description": "FF Enhancer gives you more ways to filter stories on www.fanfiction.net so that you can find the stories relevant to you.",
     "content_scripts": [
         {
             "matches": [ "http://www.fanfiction.net/*", "https://www.fanfiction.net/*" ],
