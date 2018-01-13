@@ -36,7 +36,13 @@ You will need to install the extension in Chrome developer mode as it is not yet
 4. On the Extensions page, click the checkbox for Developer mode.
 5. Refresh the page using F5, and click Load unpacked extension...
 6. Browse to the unzipped folder and select it.
-7. Extension should now be loaded -> go to FF.net and start using it.
-8. To use the extension, click the extension icon, enter criteria and/or tags, specify options and ensure that the "Enabled" checkbox is set.
-9. After specifying tags, start browsing stories -> the extension will apply your filters. If you see an empty story list, then there were no matches on the current page based on your settings -> try checking the next page.
+7. Extension should now be loaded -> go to www.fanfiction.net and start using it.
+8. To use the extension, click the extension icon, enter criteria and/or tags, specify options and ensure that the "Enabled" checkbox is set. (Read the help text for each section for more information on entering criteria and tags)
+9. After specifying desired options, start browsing stories -> the extension will apply your filters. If you see an empty story list, then there were no matches on the current page based on your settings -> try checking the next page.
+
+### Feedback:
+Add your feedback and/or bugs by creating an issue if it does not already exist. Please ensure to provide relevant details so that I can reproduce the issue / understand your feature request.
+
+#### Code quality disclaimer:
+This is my first chrome extension project and my first time doing any significant work with javascript. If you find any major issues (security, logic, bad code conventions/practices) with this extension, feel free to open an issue and tell me about it. Please also include some links with more information about the issue so that I can improve my skills. Thanks!
 
