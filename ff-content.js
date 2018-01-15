@@ -326,9 +326,12 @@ var tags = [];
 var criterias = [];
 var matched_stories = [];
 
+var no_matches_element = document.createElement("p");
+no_matches_element.textContent = "No matches were found for the selected filters on this page. Either continue checking the next page until there are stories that match your filter settings, or remove (or loosen) your some of your filters."
+
 function filter_stories() {
 	var matched = true;
-
+	var num_hidden = 0;
 	for (var i = 0; i < stories.length; i++) {
 		matched = true;
 		for (var j = 0; j < criterias.length; j++) {
@@ -336,6 +339,7 @@ function filter_stories() {
 		}
 		if (!matched) { 
 			stories[i].hide();
+			num_hidden++;
 			continue;
 		}
 		for (var j = 0; j < tags.length; j++) {
@@ -346,7 +350,12 @@ function filter_stories() {
 			matched_stories.push(stories[i]); 
 		} else {
 			stories[i].hide();
+			num_hidden++;
 		}
+	}
+	if (num_hidden == stories.length) {
+		// show message to user suggesting they loosen their filter settings, or go to next page.
+		story_holder.appendChild(no_matches_element);
 	}
 }
 
@@ -355,6 +364,7 @@ function resetStories() {
 		for (var i = stories.length - 1; i >= 0; i--) {
 			stories[i].show();
 		}
+		story_holder.removeChild(no_matches_element);
 	}
 }
 
