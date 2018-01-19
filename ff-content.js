@@ -1,13 +1,5 @@
-// content.js
-/*chrome.runtime.onMessage.addListener(
-	function(request, sender, sendResponse) {
-    	if( request.message === "clicked_browser_action" ) {
-    		var firstHref = $("a[href^='http']").eq(0).attr("href");
-
-    		console.log(firstHref);
-		}
-	}
-);*/
+// ff-content.js
+// This script controls the actual filteration of stories and is added to the fanfiction.net page on load.
 
 /*
 	content_wrapper_inner -> id for div just outside of story list
@@ -25,15 +17,15 @@ function Story(div) {
 	this.div = div;
 	
 	// title
-	if (div.children[0].className !== 'stitle') { console.log("Couldn't find story title element"); return false; }
+	if (div.children[0].className !== 'stitle') { /* console.log("Couldn't find story title element"); */ return false; }
 	this.title = div.children[0].textContent;
 	
 	//description
-	if (div.children[div.children.length - 1].className !== 'z-indent z-padtop') { console.log("Couldn't find story description element"); return false; }
+	if (div.children[div.children.length - 1].className !== 'z-indent z-padtop') { /* console.log("Couldn't find story description element"); */ return false; }
 	var description_element = div.children[div.children.length - 1];
 	
 	// story info
-	if (description_element.children.length === 0 || description_element.children[0].className !== 'z-padtop2 xgray') { console.log("Description element does not have story information!"); return false; }
+	if (description_element.children.length === 0 || description_element.children[0].className !== 'z-padtop2 xgray') { /* console.log("Description element does not have story information!"); */ return false; }
 	this.info_text = description_element.children[0].textContent;
 	
 	// actual description text
@@ -41,7 +33,7 @@ function Story(div) {
 		this.description = description_element.childNodes[0].nodeValue.trim();	//extract only story description
 	} else {
 		this.description = '';
-		console.log("story description not found -> assuming empty description");
+		/* console.log("story description not found -> assuming empty description"); */
 	}
 	// Example info_text: 
 	// 'Rated: T - French - Adventure/Drama - Chapters: 29 - Words: 144,912 - Reviews: 150 - Favs: 80 - Follows: 120 - Updated: Nov 4 - Published: Dec 25, 2015 - Harry P., Ron W., Hermione G., Daphne G. - Complete'
@@ -303,12 +295,8 @@ function getDateFromCriteriaValue(value) {
 	return false;
 }
 
-debugger;
-// document.addEventListener('DOMContentLoaded', () => {
-	
-// });
 var story_holder = document.getElementById("content_wrapper_inner");
-if (story_holder === null) { console.log("NO STORIES HOLDER"); }
+if (story_holder === null) { /* console.log("The story container was not found."); */ }
 var story_div = null;
 var story = null;
 var stories = [];
@@ -320,8 +308,6 @@ for (var i = 0; i < story_holder.childNodes.length; i++) {
 	}
 }
 
-// var tags = [new Tag("slash", false, false), new Tag("Harry", true, true), new Tag("Harry/Hermione", false, false), new Tag("Harry/Ginny", true, false)];
-// var criterias = [new Criteria("words", ">", 13510), new Criteria("words", "<", 99510), new Criteria("chapters", ">", 10), new Criteria("words/chapters", ">", 1000)];
 var tags = [];
 var criterias = [];
 var matched_stories = [];
@@ -329,7 +315,7 @@ var matched_stories = [];
 var no_matches_element = document.createElement("p");
 no_matches_element.textContent = "No matches were found for the selected filters on this page. Either continue checking the next page until there are stories that match your filter settings, or remove (or loosen) your some of your filters."
 
-function filter_stories() {
+function filterStories() {
 	var matched = true;
 	var num_hidden = 0;
 	for (var i = 0; i < stories.length; i++) {
@@ -364,16 +350,42 @@ function resetStories() {
 		for (var i = stories.length - 1; i >= 0; i--) {
 			stories[i].show();
 		}
-		story_holder.removeChild(no_matches_element);
+		if (story_holder.contains(no_matches_element)) {
+			story_holder.removeChild(no_matches_element);
+		}
 	}
 }
 
+// List of url regex strings which are invalid for the filter to run on (i.e. communities, stories, user pages)
+invalid_urls = ["s\\/|u\\/|communities\\/|forums{0,1}\\/|crossovers\\/", //match story, user profile, community, forum, and crossover selection pages
+				"betareaders\\/",
+				"book\\/(?:$|\\?)", //match books selection page
+				"anime\\/(?:$|\\?)",
+				"cartoon\\/(?:$|\\?)",
+				"comic\\/(?:$|\\?)",
+				"game\\/(?:$|\\?)",
+				"misc\\/(?:$|\\?)",
+				"play\\/(?:$|\\?)",
+				"movie\\/(?:$|\\?)",
+				"tv\\/(?:$|\\?)"];
+
+invalid_urls_regex = "^\\/(?:"; //start regex with ff url
+invalid_urls_regex += invalid_urls.join("|");
+invalid_urls_regex += ")";
+invalid_urls_regex = new RegExp(invalid_urls_regex, "i");
+
+function runFilterOnPage() {
+	// returns true only if the path does not match one of the invalid url regexes and if not on the home page
+	return !invalid_urls_regex.test(location.pathname) && "/" != location.pathname;
+}
 
 chrome.runtime.sendMessage({message: "get_filters"});
 
 chrome.runtime.onMessage.addListener(
 	function(request, sender, sendResponse) {
-		if (request.message == "filters") {
+		if (request.message == "disabled" || !runFilterOnPage()) {
+			resetStories();
+		} else if (request.message == "filters") {
 			if (request.tags) {
 				tags = [];
 				for (var i = 0; i < request.tags.length; i++) {
@@ -386,9 +398,7 @@ chrome.runtime.onMessage.addListener(
 					criterias.push(new Criteria(request.criterias[i].type, request.criterias[i].operator, request.criterias[i].value));
 				}
 			}
-			filter_stories();
-		} else if (request.message == "disabled") {
-			resetStories();
+			filterStories();
 		}
 	}
 );

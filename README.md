@@ -1,7 +1,6 @@
 # FF Enhancer
 FF Enhancer is a Google Chrome extension for enhancing the filtering options on www.fanfiction.net. 
-It allows you to define filters used to include/exclude stories based on story properties (word count, chapter count, etc.) and tags in the story descriptions.  
-  It is designed to be customizable based on the user's needs; however, as this is a work in progress, features may be added or removed.  
+It allows you to define filters used to include/exclude stories based on story properties (word count, chapter count, etc.) and tags in the story descriptions.
 
 ### Features:
 - Advanced filtering of stories based on its properties (Criteria):
@@ -24,7 +23,7 @@ Priorities: H (high), M (medium), L (low/nice to have)
   - E.g. filter out stories that have "slash" in the description, but keep stories that say "no slash" or "not slash" in the description
   - Or, include stuff that has "pizza" in the description, but don't inlcude stories that have "no pizza"
 - Auto-fetch next page until at least one story matching the filters is found - **M**
-- Investigate behaviour of extension on story list when browsing an author's profile page -> add option to enable/disable filtering on author profile pages. **M**
+- By default, the extension runs only on the main story lists. Need to add support for filtering profile page story lists and community story lists. - **M**
 - Import/export settings directly from/to a file. - **L**
 
 
